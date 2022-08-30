@@ -79,14 +79,14 @@ def main(args):
     train_loader = DataLoader(
             train_dataset,
             shuffle=True,
-            batch_size = 16,
+            batch_size = args.batch_size,
             num_workers = args.num_workers
         )
 
     valid_loader = DataLoader(
             valid_dataset,
             shuffle=False,
-            batch_size = 16,
+            batch_size = args.batch_size,
             num_workers = args.num_workers
         )
 
@@ -94,7 +94,7 @@ def main(args):
     test_loader = DataLoader(
             test_dataset,
             shuffle=False,
-            batch_size = 16,
+            batch_size = args.batch_size,
             num_workers = args.num_workers
         )
 
@@ -166,7 +166,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model_filename", type=str, default="input/multi_label_classifier/binary_note_seg_model.pth")
+    parser.add_argument("--model_filename", type=str, default="trained/binary_note_seg_model.pth")
     parser.add_argument("--data_folder", type=str, default="data/")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--n_epochs", type=int, default=10)
