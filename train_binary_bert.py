@@ -11,151 +11,151 @@ import os
 
 
 def encode(df):
-	tokenizer = AutoTokenizer.from_pretrained('KBLab/bert-base-swedish-cased')
+    tokenizer = AutoTokenizer.from_pretrained('KBLab/bert-base-swedish-cased')
 
-	# Tokenize all of the sentences and map the tokens to thier word IDs.
-	input_ids = []
-	attention_masks = []
+    # Tokenize all of the sentences and map the tokens to thier word IDs.
+    input_ids = []
+    attention_masks = []
 
-	# For every sentence...
-	for _, row in df.iterrows():
-	    encoded_dict = tokenizer.encode_plus(
-	                        row['content'],                      
-	                        add_special_tokens = True,
-	                        max_length = 512,
-	                        truncation=True,
-	                        padding = 'max_length',
-	                        return_attention_mask = True,
-	                        return_tensors = 'pt',
-	                   )
-	    
-	    # Add the encoded sentence to the list.    
-	    input_ids.append(encoded_dict['input_ids'])
-	    
-	    # And its attention mask (simply differentiates padding from non-padding).
-	    attention_masks.append(encoded_dict['attention_mask'])
+    # For every sentence...
+    for _, row in df.iterrows():
+        encoded_dict = tokenizer.encode_plus(
+                            row['content'],                      
+                            add_special_tokens = True,
+                            max_length = 512,
+                            truncation=True,
+                            padding = 'max_length',
+                            return_attention_mask = True,
+                            return_tensors = 'pt',
+                       )
+        
+        # Add the encoded sentence to the list.    
+        input_ids.append(encoded_dict['input_ids'])
+        
+        # And its attention mask (simply differentiates padding from non-padding).
+        attention_masks.append(encoded_dict['attention_mask'])
 
-	# Convert the lists into tensors.
-	input_ids = torch.cat(input_ids, dim=0)
-	attention_masks = torch.cat(attention_masks, dim=0)
-	labels = torch.tensor(df['tag'].tolist())
+    # Convert the lists into tensors.
+    input_ids = torch.cat(input_ids, dim=0)
+    attention_masks = torch.cat(attention_masks, dim=0)
+    labels = torch.tensor(df['tag'].tolist())
 
-	return input_ids, attention_masks, labels
+    return input_ids, attention_masks, labels
 
 
 def predict(model, loader):
-	loss = 0
-	preds = []
-	model.eval()
-	for batch in tqdm(loader, total=len(loader)):
-		input_ids = batch[0].to(args.device)
-		input_mask = batch[1].to(args.device)
-		labels = batch[2].to(args.device)
-		output = model(input_ids,
-			token_type_ids=None, 
-			attention_mask=input_mask, 
-			labels=labels)
-		loss += output.loss.item()
-		preds.extend(torch.argmax(output.logits, axis=1).tolist())
-	return loss, preds
+    loss = 0
+    preds = []
+    model.eval()
+    for batch in tqdm(loader, total=len(loader)):
+        input_ids = batch[0].to(args.device)
+        input_mask = batch[1].to(args.device)
+        labels = batch[2].to(args.device)
+        output = model(input_ids,
+            token_type_ids=None, 
+            attention_mask=input_mask, 
+            labels=labels)
+        loss += output.loss.item()
+        preds.extend(torch.argmax(output.logits, axis=1).tolist())
+    return loss, preds
 
 
-def main(args):	
-	df = pd.read_csv('input/multi_label_classifier/training_data.csv')
-	df = df.sample(frac=1, random_state=123).reset_index(drop=True)
+def main(args): 
+    df = pd.read_csv(f'{args.data_folder}training_data.csv')
+    df = df.sample(frac=1, random_state=123).reset_index(drop=True)
 
-	# Create binary label where seg = 1
-	df['tag'] = np.where(df['seg'] == 1, 1, 0)
+    # Create binary label where seg = 1
+    df['tag'] = np.where(df['seg'] == 1, 1, 0)
 
-	# Preprocess datasets
-	input_ids, attention_masks, labels = encode(df)
+    # Preprocess datasets
+    input_ids, attention_masks, labels = encode(df)
 
-	dataset = TensorDataset(input_ids, attention_masks, labels)
-	train_size	= int(args.train_ratio * len(dataset))
-	val_size	= int(args.valid_ratio * len(dataset))
-	test_size	= len(dataset) - train_size - val_size
-	train_dataset, valid_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
+    dataset = TensorDataset(input_ids, attention_masks, labels)
+    train_size  = int(args.train_ratio * len(dataset))
+    val_size    = int(args.valid_ratio * len(dataset))
+    test_size   = len(dataset) - train_size - val_size
+    train_dataset, valid_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
 
-	train_loader = DataLoader(
+    train_loader = DataLoader(
             train_dataset,
             shuffle=True,
             batch_size = 16,
             num_workers = args.num_workers
         )
 
-	valid_loader = DataLoader(
+    valid_loader = DataLoader(
             valid_dataset,
             shuffle=False,
             batch_size = 16,
             num_workers = args.num_workers
         )
 
-	# Not used atm
-	test_loader = DataLoader(
+    # Not used atm
+    test_loader = DataLoader(
             test_dataset,
             shuffle=False,
             batch_size = 16,
             num_workers = args.num_workers
         )
 
-	model = AutoModelForSequenceClassification.from_pretrained(
-		'KBLab/bert-base-swedish-cased',
-		num_labels=2).to(args.device)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        'KBLab/bert-base-swedish-cased',
+        num_labels=2).to(args.device)
 
-	# Initialize optimizer
-	loss_fn = nn.BCEWithLogitsLoss()
-	optimizer = torch.optim.Adam(
-		filter(lambda p: p.requires_grad, model.parameters()), lr=args.learning_rate)
-	num_training_steps = len(train_loader) * args.n_epochs
-	num_warmup_steps = num_training_steps // 10
+    # Initialize optimizer
+    loss_fn = nn.BCEWithLogitsLoss()
+    optimizer = torch.optim.Adam(
+        filter(lambda p: p.requires_grad, model.parameters()), lr=args.learning_rate)
+    num_training_steps = len(train_loader) * args.n_epochs
+    num_warmup_steps = num_training_steps // 10
 
-	# Linear warmup and step decay
-	scheduler = get_linear_schedule_with_warmup(
-		optimizer = optimizer,
-		num_warmup_steps = num_warmup_steps,
-		num_training_steps = num_training_steps
-		)
+    # Linear warmup and step decay
+    scheduler = get_linear_schedule_with_warmup(
+        optimizer = optimizer,
+        num_warmup_steps = num_warmup_steps,
+        num_training_steps = num_training_steps
+        )
 
 
-	train_losses = []
-	valid_losses = []
-	best_valid_loss = float('inf')
-	os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    train_losses = []
+    valid_losses = []
+    best_valid_loss = float('inf')
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-	for epoch in range(args.n_epochs):
-		train_loss = 0
-		model.train()
-		for batch in tqdm(train_loader, total=len(train_loader)):
-			model.zero_grad()	
+    for epoch in range(args.n_epochs):
+        train_loss = 0
+        model.train()
+        for batch in tqdm(train_loader, total=len(train_loader)):
+            model.zero_grad()   
 
-			input_ids = batch[0].to(args.device)
-			input_mask = batch[1].to(args.device)
-			labels = batch[2].to(args.device)
-			output = model(input_ids,
-				token_type_ids=None, 
-				attention_mask=input_mask, 
-				labels=labels)
-			loss = output.loss
-			train_loss += loss.item()
+            input_ids = batch[0].to(args.device)
+            input_mask = batch[1].to(args.device)
+            labels = batch[2].to(args.device)
+            output = model(input_ids,
+                token_type_ids=None, 
+                attention_mask=input_mask, 
+                labels=labels)
+            loss = output.loss
+            train_loss += loss.item()
 
-			loss.backward()
-			optimizer.step()
-			scheduler.step()
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
 
-		# Evaluation
-		valid_loss, preds = predict(model, valid_loader)
+        # Evaluation
+        valid_loss, preds = predict(model, valid_loader)
 
-		train_losses.append(train_loss)
-		valid_losses.append(valid_loss)
-		print(f'Training Loss: {train_loss:.3f}')
-		print(f'Validation Loss: {valid_loss:.3f}')
+        train_losses.append(train_loss)
+        valid_losses.append(valid_loss)
+        print(f'Training Loss: {train_loss:.3f}')
+        print(f'Validation Loss: {valid_loss:.3f}')
 
-		labels = df.loc[valid_dataset.indices, 'tag'].tolist()		
-		print(f'Eval accuracy: {sum([x==y for x, y in zip(labels, preds)]) / len(labels)}')
+        labels = df.loc[valid_dataset.indices, 'tag'].tolist()      
+        print(f'Eval accuracy: {sum([x==y for x, y in zip(labels, preds)]) / len(labels)}')
 
         # Store best model
         if valid_loss < best_valid_loss:
-        	best_valid_loss = valid_loss
+            best_valid_loss = valid_loss
             torch.save({
                 'epoch': epoch+1,
                 'model_state_dict': model.state_dict(),
@@ -167,6 +167,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model_filename", type=str, default="input/multi_label_classifier/binary_note_seg_model.pth")
+    parser.add_argument("--data_folder", type=str, default="data/")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--n_epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=16)
