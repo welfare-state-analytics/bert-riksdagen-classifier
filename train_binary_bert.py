@@ -147,8 +147,12 @@ def main(args):
 
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
-        print(f'Training Loss: {train_loss:.3f}')
-        print(f'Validation Loss: {valid_loss:.3f}')
+
+        train_loss_avg = train_loss * args.batch_size / len(train_loader)
+        valid_loss_avg = valid_loss * args.batch_size / len(valid_loader)
+
+        print(f'Training Loss: {train_loss_avg:.3f}')
+        print(f'Validation Loss: {valid_loss_avg:.3f}')
 
         labels = df.loc[valid_dataset.indices, 'tag'].tolist()      
         print(f'Eval accuracy: {sum([x==y for x, y in zip(labels, preds)]) / len(labels)}')
