@@ -1,20 +1,6 @@
-## Multi label classifier
+# BERT Riksdagen classifier
 
-The idea is to create a multi label classifier which predicts OCR box labels.
-
-The reasons for predicting on OCR data are that:
-
-- The OCR:d material is essentially part of the foundation of which the corpus is built. We want an as stable foundation as possible as updates to the corpus should not change our classifiers (since they are difficult to adapt).
-
-- We can utilize for example KB:s annotation tool.
-
-- We have OCR coordinate data and even images if wanted. Rather than simply using BERT we can use methods like BROS or LayoutLM to incorporate more information than just textual.
-
-The reasons for using a multi label classifier are that:
-
-- Segmentation errors will always occur to some extent which in turn causes overlapping labels. Allowing for multiple labels controls for this, and overlaps can be handled in post depending on the type of overlap.
-
-- 1 model to keep track of rather than many, making updates easy and predictions relatively cheap.
+Currently binary classification of segment types.
 
 ## Data
 
