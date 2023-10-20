@@ -82,7 +82,7 @@ def main(args):
     df['tag'] = np.where(df['seg'] == 1, 1, 0)
 
     LOGGER.info("Load and save tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained('KBLab/bert-base-swedish-cased')
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     tokenizer.save_pretrained(args.model_filename)
 
     
@@ -119,7 +119,7 @@ def main(args):
 
     LOGGER.info("Define model...")
     model = AutoModelForSequenceClassification.from_pretrained(
-        'KBLab/bert-base-swedish-cased',
+        args.base_model,
         num_labels=2,
         id2label={1: 'seg', 0: 'note'}).to(args.device)
 
@@ -192,6 +192,8 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model_filename", type=str, default="trained/binary_note_seg_model")
+    parser.add_argument("--base_model", type=str, default="KBLab/bert-base-swedish-cased")
+    parser.add_argument("--tokenizer", type=str, default="KBLab/bert-base-swedish-cased")
     parser.add_argument("--data_folder", type=str, default="data/")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--n_epochs", type=int, default=10)
