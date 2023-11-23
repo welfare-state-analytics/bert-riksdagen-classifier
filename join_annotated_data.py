@@ -29,7 +29,7 @@ def main(args):
     tags = args.tags
     for tag in tags:
         right = pd.concat(
-            [read_messy_csv(f) for f in p.glob(f'input/multi_label_classifier/{tag}/*.csv')])\
+            [read_messy_csv(f) for f in p.glob(f'data/{tag}/*.csv')])\
             .reset_index(drop=True
         )
         right[tag] = 1
@@ -44,7 +44,12 @@ def main(args):
             
     left[tags] = left[tags].fillna(0).astype(int)
     left = left.sort_values('id')
-    left.to_csv('input/multi_label_classifier/training_data.csv', index=False)
+    print(list(left["content"])[0])
+    left["block"] = left["id"].str.split("#").str[1]
+    left["id"] = left["id"].str.split("#").str[0].str.split("/").str[-1]
+    left["content"] = left["content"].str.replace("\\n", " ").str.split().str.join(" ")
+    left["content"] = left["content"].str.strip('"')
+    left.to_csv('data/training_data.csv', index=False)
 
 
 if __name__ == "__main__":
