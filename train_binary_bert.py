@@ -57,9 +57,8 @@ def encode(df, tokenizer):
     return input_ids, attention_masks, labels
 
 
-def predict(model, loader):
-    loss = 0
-    preds = []
+def evaluate(model, loader):
+    loss, accuracy = 0.0, []
     model.eval()
     for batch in tqdm(loader, total=len(loader)):
         input_ids = batch[0].to(args.device)
@@ -70,8 +69,12 @@ def predict(model, loader):
             attention_mask=input_mask, 
             labels=labels)
         loss += output.loss.item()
-        preds.extend(torch.argmax(output.logits, axis=1).tolist())
-    return loss, preds
+        preds_batch = torch.argmax(output.logits, axis=1)
+        batch_acc = torch.mean((preds_batch == labels).float())
+        accuracy.append(batch_acc)
+        
+    accuracy = torch.mean(torch.tensor(accuracy))
+    return loss, accuracy
 
 
 def main(args): 
@@ -147,7 +150,6 @@ def main(args):
     best_valid_loss = float('inf')
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-
     for epoch in range(args.n_epochs):
         LOGGER.log(TRAIN, f"Epoch {epoch} starts!")
         train_loss = 0
@@ -168,9 +170,9 @@ def main(args):
             loss.backward()
             optimizer.step()
             scheduler.step()
-
+        
         # Evaluation
-        valid_loss, preds = predict(model, valid_loader)
+        valid_loss, valid_accuracy = evaluate(model, valid_loader)
 
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
@@ -180,9 +182,7 @@ def main(args):
 
         LOGGER.log(TRAIN, f'Training Loss: {train_loss_avg:.3f}')
         LOGGER.log(TRAIN, f'Validation Loss: {valid_loss_avg:.3f}')
-
-        labels = df.loc[valid_dataset.indices, 'tag'].tolist()      
-        LOGGER.log(TRAIN, f'Eval accuracy: {sum([x==y for x, y in zip(labels, preds)]) / len(labels)}')
+        LOGGER.log(TRAIN, f'Validation accuracy: {valid_accuracy}')
 
         # Store best model
 
