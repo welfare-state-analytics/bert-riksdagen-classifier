@@ -50,6 +50,9 @@ def main(args):
     left["content"] = left["content"].str.replace("\\n", " ").str.split().str.join(" ")
     left["content"] = left["content"].str.strip('"')
     print(left[left["content"].isnull()])
+
+    left['tag'] = np.where(left['seg'] == 1, "seg", "note")
+    left = left[["content", "tag"]]
     left.to_csv('data/training_data.csv', index=False)
 
 

@@ -8,6 +8,7 @@ from transformers import get_linear_schedule_with_warmup
 import argparse
 from tqdm import tqdm
 import os
+from bidict import bidict
 
 # Logger go brrr pretty colors !
 # Don't mind me
@@ -82,8 +83,12 @@ def main(args):
     df = df.sample(frac=1, random_state=123).reset_index(drop=True)
 
     # Create binary label where seg = 1
-    df['tag'] = np.where(df['seg'] == 1, 1, 0)
     df = df[df["content"].notnull()]
+    label_names = args.label_names
+    if label_names is None:
+        label_names = sorted(list(set(df["tag"])))
+    label_dict = {ix: name for ix, name in enumerate(label_names)}
+    df["tag"] = [bidict(label_dict).inv[tag] for tag in df["tag"]]
 
     LOGGER.info("Load and save tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
@@ -124,10 +129,9 @@ def main(args):
         )
 
     LOGGER.info("Define model...")
-    label_dict = {ix: name for ix, name in enumerate(args.label_names)}
     model = AutoModelForSequenceClassification.from_pretrained(
         args.base_model,
-        num_labels=2,
+        num_labels=len(label_dict),
         id2label=label_dict).to(args.device)
 
     # Initialize optimizer
@@ -198,7 +202,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_filename", type=str, default="trained/binary_note_seg_model")
     parser.add_argument("--base_model", type=str, default="KBLab/bert-base-swedish-cased")
     parser.add_argument("--tokenizer", type=str, default="KBLab/bert-base-swedish-cased")
-    parser.add_argument("--label_names", type=str, nargs="+", default=["note", "seg"])
+    parser.add_argument("--label_names", type=str, nargs="+", default=None)
     parser.add_argument("--data_folder", type=str, default="data/")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--n_epochs", type=int, default=10)
