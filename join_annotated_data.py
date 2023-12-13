@@ -49,6 +49,7 @@ def main(args):
     left["id"] = left["id"].str.split("#").str[0].str.split("/").str[-1]
     left["content"] = left["content"].str.replace("\\n", " ").str.split().str.join(" ")
     left["content"] = left["content"].str.strip('"')
+    print(left[left["content"].isnull()])
     left.to_csv('data/training_data.csv', index=False)
 
 

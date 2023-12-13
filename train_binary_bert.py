@@ -32,7 +32,7 @@ def encode(df, tokenizer):
     attention_masks = []
 
     # For every sentence...
-    for _, row in df.iterrows():
+    for ix, row in df.iterrows():
         encoded_dict = tokenizer.encode_plus(
                             row['content'],                      
                             add_special_tokens = True,
@@ -80,6 +80,7 @@ def main(args):
 
     # Create binary label where seg = 1
     df['tag'] = np.where(df['seg'] == 1, 1, 0)
+    df = df[df["content"].notnull()]
 
     LOGGER.info("Load and save tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
@@ -88,6 +89,8 @@ def main(args):
     
     LOGGER.info("Preprocess datasets...")
     input_ids, attention_masks, labels = encode(df, tokenizer)
+
+    LOGGER.info(f"Labels: {labels}")
 
     dataset = TensorDataset(input_ids, attention_masks, labels)
     train_size  = int(args.train_ratio * len(dataset))
@@ -118,10 +121,11 @@ def main(args):
         )
 
     LOGGER.info("Define model...")
+    label_dict = {ix: name for ix, name in enumerate(args.label_names)}
     model = AutoModelForSequenceClassification.from_pretrained(
         args.base_model,
         num_labels=2,
-        id2label={1: 'seg', 0: 'note'}).to(args.device)
+        id2label=label_dict).to(args.device)
 
     # Initialize optimizer
     loss_fn = nn.BCEWithLogitsLoss()
@@ -194,6 +198,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_filename", type=str, default="trained/binary_note_seg_model")
     parser.add_argument("--base_model", type=str, default="KBLab/bert-base-swedish-cased")
     parser.add_argument("--tokenizer", type=str, default="KBLab/bert-base-swedish-cased")
+    parser.add_argument("--label_names", type=str, nargs="+", default=["note", "seg"])
     parser.add_argument("--data_folder", type=str, default="data/")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--n_epochs", type=int, default=10)
