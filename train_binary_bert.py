@@ -79,7 +79,7 @@ def evaluate(model, loader):
 
 
 def main(args): 
-    df = pd.read_csv(f'{args.data_folder}training_data.csv')
+    df = pd.read_csv(f'{args.data_path}')
     df = df.sample(frac=1, random_state=123).reset_index(drop=True)
 
     # Create binary label where seg = 1
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     parser.add_argument("--base_model", type=str, default="KBLab/bert-base-swedish-cased")
     parser.add_argument("--tokenizer", type=str, default="KBLab/bert-base-swedish-cased")
     parser.add_argument("--label_names", type=str, nargs="+", default=None)
-    parser.add_argument("--data_folder", type=str, default="data/")
+    parser.add_argument("--data_path", type=str, default="data/training_data.csv")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--n_epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=16)
