@@ -23,7 +23,7 @@ HANDLER.setFormatter(colorlog.ColoredFormatter('%(log_color)s%(asctime)s [%(leve
                                                stream=sys.stdout))
 LOGGER = colorlog.getLogger('finetuner')
 LOGGER.addHandler(HANDLER)
-LOGGER.setLevel(20)
+LOGGER.setLevel(10)
 # Done with colors going brr
 
 
@@ -58,8 +58,8 @@ def encode(df, tokenizer):
     return input_ids, attention_masks, labels
 
 
-def evaluate(model, loader):
-    loss, accuracy = 0.0, []
+def evaluate(model, loader, bayesian_bootstrap=False):
+    loss, accuracy = None, None
     model.eval()
     for batch in tqdm(loader, total=len(loader)):
         input_ids = batch[0].to(args.device)
@@ -69,12 +69,25 @@ def evaluate(model, loader):
             token_type_ids=None, 
             attention_mask=input_mask, 
             labels=labels)
-        loss += output.loss.item()
+        loss_batch = torch.nn.functional.cross_entropy(output.logits, labels, reduction="none").detach().cpu()
         preds_batch = torch.argmax(output.logits, axis=1)
-        batch_acc = torch.mean((preds_batch == labels).float())
-        accuracy.append(batch_acc)
-        
-    accuracy = torch.mean(torch.tensor(accuracy))
+        batch_acc = (preds_batch == labels).float().cpu()
+        if loss is None:
+            loss = loss_batch
+            accuracy = batch_acc
+        else:
+            loss = torch.cat([loss, loss_batch])
+            accuracy = torch.cat([accuracy, batch_acc])
+    
+    if not bayesian_bootstrap:
+        accuracy = accuracy.numpy()
+        loss = loss.numpy()
+    else:
+        np.random.seed(429)
+        N = len(accuracy)
+        theta = np.random.dirichlet(np.ones(N), 1000)
+        accuracy = theta @ accuracy.numpy()
+        loss = theta @ loss.numpy()
     return loss, accuracy
 
 
@@ -92,7 +105,8 @@ def main(args):
 
     LOGGER.info("Load and save tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
-    tokenizer.save_pretrained(args.model_filename)
+    if args.savepath is not None:
+        tokenizer.save_pretrained(args.savepath)
 
     
     LOGGER.info("Preprocess datasets...")
@@ -174,32 +188,44 @@ def main(args):
             loss.backward()
             optimizer.step()
             scheduler.step()
-        
+                    
         # Evaluation
-        valid_loss, valid_accuracy = evaluate(model, valid_loader)
+        valid_loss, valid_accuracy = evaluate(model, valid_loader, bayesian_bootstrap=args.bayesian_bootstrap)
 
         train_losses.append(train_loss)
-        valid_losses.append(valid_loss)
+        valid_losses.append(torch.tensor(valid_loss))
 
         train_loss_avg = train_loss * args.batch_size / len(train_loader)
-        valid_loss_avg = valid_loss * args.batch_size / len(valid_loader)
+        valid_loss_avg = np.mean(valid_loss)
+        valid_accuracy_avg = np.mean(valid_accuracy)
 
         LOGGER.log(TRAIN, f'Training Loss: {train_loss_avg:.3f}')
         LOGGER.log(TRAIN, f'Validation Loss: {valid_loss_avg:.3f}')
-        LOGGER.log(TRAIN, f'Validation accuracy: {valid_accuracy}')
+        LOGGER.log(TRAIN, f'Validation accuracy: {valid_accuracy_avg}')
 
-        # Store best model
+        if args.bayesian_bootstrap:
+            valid_losses_bbs = torch.stack(valid_losses, dim=0)
+            valid_losses_bbs = torch.argmax(-valid_losses_bbs, axis=0)
+            
+            bincounts = torch.bincount(valid_losses_bbs)
+            posterior_probs = bincounts / bincounts.sum()
+            LOGGER.log(TRAIN, f"Bayesian bootstrap samples: {bincounts}")
+            LOGGER.log(TRAIN, f"Posterior probabilities for best model: {posterior_probs}")
 
-        if valid_loss < best_valid_loss:
+        if valid_loss_avg < best_valid_loss:
             LOGGER.info("Best validation loss so far")
-            best_valid_loss = valid_loss
-            model.save_pretrained(args.model_filename)
+            best_valid_loss = valid_loss_avg
+            if args.savepath is not None:
+                LOGGER.debug(f"Save model to {args.savepath}")
+                model.save_pretrained(args.savepath)
+            else:
+                LOGGER.debug("No save path provided, skipping saving...")
         else:
             LOGGER.info("Not the best validation loss so far")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model_filename", type=str, default="trained/binary_note_seg_model")
+    parser.add_argument("--savepath", type=str, default=None)
     parser.add_argument("--base_model", type=str, default="KBLab/bert-base-swedish-cased")
     parser.add_argument("--tokenizer", type=str, default="KBLab/bert-base-swedish-cased")
     parser.add_argument("--label_names", type=str, nargs="+", default=None)
@@ -211,5 +237,6 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=float, default=0.00002)
     parser.add_argument("--train_ratio", type=float, default=0.6)
     parser.add_argument("--valid_ratio", type=float, default=0.2) # test set is what remains after train and valid splits
+    parser.add_argument("--bayesian_bootstrap", type=bool, default=False)
     args = parser.parse_args()
     main(args)
