@@ -1,4 +1,6 @@
-import numpy as np
+"""
+Train BERT-based classifier
+"""
 import pandas as pd
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
 import torch
@@ -9,12 +11,7 @@ import argparse
 from tqdm import tqdm
 import os
 from bidict import bidict
-
-# Logger go brrr pretty colors !
-# Don't mind me
 from trainerlog import get_logger
-LOGGER = get_logger("train")
-# Done with colors going brr
 
 
 def encode(df, tokenizer):
@@ -189,17 +186,17 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model_filename", type=str, default="trained/binary_note_seg_model")
-    parser.add_argument("--base_model", type=str, default="KBLab/bert-base-swedish-cased")
+    parser.add_argument("--model_filename", type=str, default="trained/binary_note_seg_model", help="Save location for the model")
+    parser.add_argument("--base_model", type=str, default="KBLab/bert-base-swedish-cased", help="Base model that the model is initialized from")
     parser.add_argument("--tokenizer", type=str, default="KBLab/bert-base-swedish-cased")
-    parser.add_argument("--label_names", type=str, nargs="+", default=None)
+    parser.add_argument("--label_names", type=str, nargs="+", default=None, help="A list of label names to be used in the classifier")
     parser.add_argument("--data_path", type=str, default="data/training_data.csv")
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--n_epochs", type=int, default=10)
+    parser.add_argument("--n_epochs", type=int, default=10, help="Number of epochs to train for")
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--learning_rate", type=float, default=0.00002)
-    parser.add_argument("--train_ratio", type=float, default=0.6)
-    parser.add_argument("--valid_ratio", type=float, default=0.2) # test set is what remains after train and valid splits
+    parser.add_argument("--train_ratio", type=float, default=0.6, help="Proportion of data used for training")
+    parser.add_argument("--valid_ratio", type=float, default=0.2, help="Proportion of data used for validation. Test set is what remains after train and valid splits")
     args = parser.parse_args()
     main(args)
