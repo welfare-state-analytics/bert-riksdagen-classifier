@@ -2,6 +2,8 @@
 
 Currently binary classification of segment types.
 
+DOCS OUT OF DATE; disregard below
+
 ## Data
 
 - A sample of 6(?) pages per year has been randomly sampled from the corpus. It is in _sample.csv_ and covers the era before documents were born digital.
