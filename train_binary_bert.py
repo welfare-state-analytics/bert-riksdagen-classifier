@@ -12,18 +12,8 @@ from bidict import bidict
 
 # Logger go brrr pretty colors !
 # Don't mind me
-import sys, logging, colorlog
-TRAIN = 25
-LOG_COLORS = {'DEBUG':'cyan', 'INFO':'green', 'TRAIN':'blue', 'WARNING':'yellow', 'ERROR': 'red', 'CRITICAL':'red,bg_white'}
-logging.addLevelName(TRAIN, 'TRAIN')
-HANDLER = colorlog.StreamHandler(stream=sys.stdout)
-HANDLER.setFormatter(colorlog.ColoredFormatter('%(log_color)s%(asctime)s [%(levelname)s] %(white)s(%(name)s)%(reset)s: %(message)s',
-                                               log_colors=LOG_COLORS,
-                                               datefmt="%H:%M:%S",
-                                               stream=sys.stdout))
-LOGGER = colorlog.getLogger('finetuner')
-LOGGER.addHandler(HANDLER)
-LOGGER.setLevel(20)
+from trainerlog import get_logger
+LOGGER = get_logger("train")
 # Done with colors going brr
 
 
@@ -128,7 +118,7 @@ def main(args):
             num_workers = args.num_workers
         )
 
-    LOGGER.info("Define model...")
+    LOGGER.debug("Define model...")
     model = AutoModelForSequenceClassification.from_pretrained(
         args.base_model,
         num_labels=len(label_dict),
@@ -155,7 +145,7 @@ def main(args):
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     for epoch in range(args.n_epochs):
-        LOGGER.log(TRAIN, f"Epoch {epoch} starts!")
+        LOGGER.train(f"Epoch {epoch} starts!")
         train_loss = 0
         model.train()
         for batch in tqdm(train_loader, total=len(train_loader)):
@@ -184,9 +174,9 @@ def main(args):
         train_loss_avg = train_loss * args.batch_size / len(train_loader)
         valid_loss_avg = valid_loss * args.batch_size / len(valid_loader)
 
-        LOGGER.log(TRAIN, f'Training Loss: {train_loss_avg:.3f}')
-        LOGGER.log(TRAIN, f'Validation Loss: {valid_loss_avg:.3f}')
-        LOGGER.log(TRAIN, f'Validation accuracy: {valid_accuracy}')
+        LOGGER.train(f'Training Loss: {train_loss_avg:.3f}')
+        LOGGER.train(f'Validation Loss: {valid_loss_avg:.3f}')
+        LOGGER.train(f'Validation accuracy: {valid_accuracy}')
 
         # Store best model
 
