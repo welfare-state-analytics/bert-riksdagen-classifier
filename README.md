@@ -2,4 +2,8 @@
 
 Currently binary classification of segment types.
 
-TODO: write up to date docs
+Dependencies:
+
+```
+pandas, torch, transformers, tqdm, bidict, trainerlog
+```
