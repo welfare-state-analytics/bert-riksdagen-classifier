@@ -13,6 +13,7 @@ import os
 from bidict import bidict
 from trainerlog import get_logger
 
+LOGGER = get_logger("train-bert")
 
 def encode(df, tokenizer):
     # Tokenize all of the sentences and map the tokens to thier word IDs.
