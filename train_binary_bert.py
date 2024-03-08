@@ -1,18 +1,18 @@
 """
 Train BERT-based classifier
 """
-import pandas as pd
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
-import torch
-import torch.nn as nn
 from torch.utils.data import TensorDataset, random_split, DataLoader
 from transformers import get_linear_schedule_with_warmup
-import argparse
-from tqdm import tqdm
-import os
-from bidict import bidict
 from trainerlog import get_logger
+from bidict import bidict
+import torch.nn as nn
+from tqdm import tqdm
+import pandas as pd
+import argparse
 import logging
+import torch
+import os
 
 LOGGER = get_logger("train-bert")
 
