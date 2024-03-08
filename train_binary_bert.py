@@ -68,7 +68,7 @@ def evaluate(model, loader):
 
 
 def main(args): 
-    logging.basicConfig(filename='training.log', level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.basicConfig(filename=f'{args.model_filename}/training.log', level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     df = pd.read_csv(f'{args.data_path}')
     df = df.sample(frac=1, random_state=123).reset_index(drop=True)
 
