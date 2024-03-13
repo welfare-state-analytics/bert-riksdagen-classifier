@@ -79,18 +79,14 @@ def main(args):
     label_dict = {ix: name for ix, name in enumerate(label_names)}
     train_df["tag"] = [bidict(label_dict).inv[tag] for tag in train_df["tag"]]
     
+    print(label_dict)
     # validation dataframe
     val_df = pd.read_csv(f'{args.val_data_path}')
     val_df = val_df.sample(frac=1, random_state=123).reset_index(drop=True)
 
     # Create binary label where seg = 1
     val_df = val_df[val_df["content"].notnull()]
-    label_names = args.label_names
-    if label_names is None:
-        label_names = sorted(list(set(val_df["tag"])))
-    label_dict = {ix: name for ix, name in enumerate(label_names)}
     val_df["tag"] = [bidict(label_dict).inv[tag] for tag in val_df["tag"]]
-
     LOGGER.info("Load and save tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     tokenizer.save_pretrained(args.model_filename)
