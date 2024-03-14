@@ -16,6 +16,15 @@ def clean_content(content):
 
 
 
+def update_tag(tag):
+	# Update tag value
+	tag = str(tag)
+	if tag.lower() == 'u':
+		return 'seg'
+	elif tag.lower() not in ['intro', 'u', 'seg']:
+		return 'note'
+	return tag.lower()
+
 def process_csv_files(usage, input_dir, output_dir):
 	# List to store dataframes from each file
 	dfs = []
@@ -42,7 +51,7 @@ def process_csv_files(usage, input_dir, output_dir):
 	
 
 	selected_data['content'] = selected_data['content'].apply(clean_content)
-	selected_data['tag'] = selected_data['tag'].str.lower()
+	selected_data['tag'] = selected_data['tag'].apply(update_tag)
 	# Save to a new CSV file
 	output_file = os.path.join(output_dir,f'{usage}_processed_data.csv')
 	selected_data.to_csv(output_file, index=False)
