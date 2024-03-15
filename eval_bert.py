@@ -86,9 +86,14 @@ def main(args):
     label_dict = {ix: name for ix, name in enumerate(label_names)}
     df["tag"] = [bidict(label_dict).inv[tag] for tag in df["tag"]]
 
-    LOGGER.info("Load and save tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
-    tokenizer.save_pretrained(args.model_filename)
+    LOGGER.debug("load model...")
+    model = AutoModelForSequenceClassification.from_pretrained(
+        args.model_filename,
+        num_labels=len(label_dict),
+        id2label=label_dict).to(args.device)
+
+    LOGGER.info("Load and tokenizer...")
+    tokenizer = AutoTokenizer.from_pretrained(args.model_filename)
 
     
     LOGGER.info("Preprocess datasets...")
@@ -105,11 +110,7 @@ def main(args):
             num_workers = args.num_workers
         )
 
-    LOGGER.debug("Define model...")
-    model = AutoModelForSequenceClassification.from_pretrained(
-        args.base_model,
-        num_labels=len(label_dict),
-        id2label=label_dict).to(args.device)
+
 
     eval(model, test_loader)
 
