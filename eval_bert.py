@@ -58,9 +58,8 @@ def evaluate(model, loader):
         preds_batch = torch.argmax(output.logits, axis=1)
         batch_acc = torch.mean((preds_batch == labels).float())
         accuracy.append(batch_acc)
-        true_labels.extend(labels)
-        pred_labels.extend(preds_batch)
-    
+        true_labels.extend(labels.cpu().numpy())
+        pred_labels.extend(preds_batch.cpu().numpy())
     print("Accuracy:", accuracy_score(true_labels, pred_labels))
     print("\nClassification Report:")
     print(classification_report(true_labels, pred_labels))
@@ -102,8 +101,8 @@ def main(args):
         batch_size=args.batch_size,
         num_workers=args.num_workers
     )
-
     evaluate(model, test_loader)
+    print("Classes: ", label_names)
 
 
 if __name__ == "__main__":
