@@ -42,10 +42,10 @@ def encode(df, tokenizer):
     return input_ids, attention_masks, labels
 
 
-def evaluate(model, loader):
+def evaluate(model,tokenizer, loader, dataset ,label_names):
     loss, accuracy = 0.0, []
     model.eval()
-    true_labels, pred_labels = [], []
+    true_labels, pred_labels, misclassified_examples = [], [], []
     for batch in tqdm(loader, total=len(loader)):
         input_ids = batch[0].to(args.device)
         input_mask = batch[1].to(args.device)
@@ -60,9 +60,26 @@ def evaluate(model, loader):
         accuracy.append(batch_acc)
         true_labels.extend(labels.cpu().numpy())
         pred_labels.extend(preds_batch.cpu().numpy())
-    print("Accuracy:", accuracy_score(true_labels, pred_labels))
+        
+        for true_label, pred_label, input_id in zip(labels, preds_batch, input_ids):
+            if true_label != pred_label:
+                text = tokenizer.decode(input_id, skip_special_tokens=True)
+                misclassified_examples.append({'text': text, 'true_label': label_names[true_label.item()], 'predicted_label':label_names[pred_label.item()]})
+
+
+    misclassified_df = pd.DataFrame(misclassified_examples)
+    misclassified_df.to_csv('data/misclassified_examples.csv', index=False, columns=['text', 'true_label', 'predicted_label'])
+    
+
+    # Print misclassified examples
+    print("\nMisclassified Examples:")
+    print(misclassified_examples)
+
+    print("\nAccuracy:", accuracy_score(true_labels, pred_labels))
     print("\nClassification Report:")
-    print(classification_report(true_labels, pred_labels))
+    print(classification_report(true_labels, pred_labels, target_names=list(label_names)))
+
+
 
 
 def main(args):
@@ -101,8 +118,7 @@ def main(args):
         batch_size=args.batch_size,
         num_workers=args.num_workers
     )
-    evaluate(model, test_loader)
-    print("Classes: ", label_names)
+    evaluate(model, tokenizer, test_loader,df, label_names)
 
 
 if __name__ == "__main__":
