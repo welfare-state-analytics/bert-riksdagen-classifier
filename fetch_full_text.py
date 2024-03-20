@@ -41,11 +41,14 @@ def main(args):
     element_texts = pd.DataFrame(element_texts, columns=["elem_id", "full_text"])
     len_before = len(df)
 
+    columns = [col for col in df.columns if col not in ["full_text"]]
+    df = df[columns]
+
     # Merge while preserving order
     df["index"] = list(range(len(df)))
     df = df.merge(element_texts, on="elem_id", how="left")
     df = df.sort_values("index")
-    columns = [col for col in df.columns if col not in ["full_text", "index"]]
+    columns = [col for col in df.columns if col not in ["index"]]
     df = df[columns]
 
     assert len_before == len(df), f"Len before {len_before} len now {len(df)}"
