@@ -21,7 +21,7 @@ def update_tag(tag):
 	tag = str(tag)
 	if tag.lower() == 'u':
 		return 'seg'
-	elif tag.lower() not in ['intro', 'u', 'seg']:
+	elif tag.lower() not in ['u', 'seg']:
 		return 'note'
 	return tag.lower()
 
@@ -43,17 +43,17 @@ def process_csv_files(usage, input_dir, output_dir):
 	combined_df = pd.concat(dfs, ignore_index=True)
 
 	# Extract specific columns
-	selected_columns = ['text', 'segmentation']
+	selected_columns = ['full_text', 'segmentation', 'github', 'protocol_id']
 	selected_data = combined_df[selected_columns]
 
 	# Rename columns
-	selected_data.rename(columns={'text': 'content', 'segmentation': 'tag'}, inplace=True)
+	selected_data.rename(columns={'full_text': 'content', 'segmentation': 'tag'}, inplace=True)
 	
 
 	selected_data['content'] = selected_data['content'].apply(clean_content)
 	selected_data['tag'] = selected_data['tag'].apply(update_tag)
 	# Save to a new CSV file
-	output_file = os.path.join(output_dir,f'{usage}_processed_data.csv')
+	output_file = os.path.join(output_dir,f'{usage}_full_text_merged_intro_note.csv')
 	selected_data.to_csv(output_file, index=False)
 	print(f"Data has been saved to {output_file}")
 
