@@ -3,6 +3,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import accuracy_score, classification_report
 from tqdm import tqdm
 import pandas as pd
+import Levenshtein
 import argparse
 import logging
 import torch
@@ -61,11 +62,17 @@ def evaluate(model,tokenizer, loader, dataset ,label_names):
         true_labels.extend(labels.cpu().numpy())
         pred_labels.extend(preds_batch.cpu().numpy())
         
-        for true_label, pred_label, input_id, github, protocol_id in zip(labels, preds_batch, input_ids,dataset["github"],dataset["protocol_id"]):
+        for true_label, pred_label, input_id  in zip(labels, preds_batch, input_ids):
             if true_label != pred_label:
                 text = tokenizer.decode(input_id, skip_special_tokens=True)
-                misclassified_examples.append({'text': text, 'true_label': label_names[true_label.item()], 'predicted_label':label_names[pred_label.item()], 'github': github, 'protocol_id': protocol_id})
+                matching_rows = dataset[dataset['content'].apply(lambda x: Levenshtein.ratio(text, x) >= 0.9)]
+                if not matching_rows.empty:
+                    github = matching_rows['github'].iloc[0]
+                    protocol_id = matching_rows['protocol_id'].iloc[0]
 
+                    misclassified_examples.append({'text': text, 'true_label': label_names[true_label.item()], 'predicted_label':label_names[pred_label.item()], 'github': github, 'protocol_id': protocol_id})
+                else:
+                    print(f"no matching row for text: {text}")
 
     misclassified_df = pd.DataFrame(misclassified_examples)
     misclassified_df.to_csv('data/misclassified_examples.csv', index=False, columns=['text', 'true_label', 'predicted_label', 'github', 'protocol_id'])
