@@ -61,14 +61,14 @@ def evaluate(model,tokenizer, loader, dataset ,label_names):
         true_labels.extend(labels.cpu().numpy())
         pred_labels.extend(preds_batch.cpu().numpy())
         
-        for true_label, pred_label, input_id in zip(labels, preds_batch, input_ids):
+        for true_label, pred_label, input_id, github, protocol_id in zip(labels, preds_batch, input_ids,dataset["github"],dataset["protocol_id"]):
             if true_label != pred_label:
                 text = tokenizer.decode(input_id, skip_special_tokens=True)
-                misclassified_examples.append({'text': text, 'true_label': label_names[true_label.item()], 'predicted_label':label_names[pred_label.item()]})
+                misclassified_examples.append({'text': text, 'true_label': label_names[true_label.item()], 'predicted_label':label_names[pred_label.item()], 'github': github, 'protocol_id': protocol_id})
 
 
     misclassified_df = pd.DataFrame(misclassified_examples)
-    misclassified_df.to_csv('data/misclassified_examples.csv', index=False, columns=['text', 'true_label', 'predicted_label'])
+    misclassified_df.to_csv('data/misclassified_examples.csv', index=False, columns=['text', 'true_label', 'predicted_label', 'github', 'protocol_id'])
     
 
     # Print misclassified examples
