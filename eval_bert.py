@@ -3,6 +3,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import accuracy_score, classification_report
 from tqdm import tqdm
 import pandas as pd
+import numpy as np 
 import Levenshtein
 import argparse
 import logging
@@ -46,7 +47,7 @@ def encode(df, tokenizer):
 def evaluate(model,tokenizer, loader, dataset ,label_names):
     loss, accuracy = 0.0, []
     model.eval()
-    true_labels, pred_labels, misclassified_examples = [], [], []
+    true_labels, pred_labels, misclassified_examples, pred_scores = [], [], [], []
     for batch in tqdm(loader, total=len(loader)):
         input_ids = batch[0].to(args.device)
         input_mask = batch[1].to(args.device)
@@ -57,25 +58,27 @@ def evaluate(model,tokenizer, loader, dataset ,label_names):
                        labels=labels)
         loss += output.loss.item()
         preds_batch = torch.argmax(output.logits, axis=1)
+        import torch.nn.functional as F
+        preds_scores = F.softmax(output.logits, dim=1)
         batch_acc = torch.mean((preds_batch == labels).float())
         accuracy.append(batch_acc)
         true_labels.extend(labels.cpu().numpy())
         pred_labels.extend(preds_batch.cpu().numpy())
+        pred_scores.extend(preds_scores.detach().cpu().numpy())
         
-        for true_label, pred_label, input_id  in zip(labels, preds_batch, input_ids):
+        for true_label, pred_label,pred_score, input_id  in zip(labels, preds_batch, pred_scores, input_ids):
             if true_label != pred_label:
                 text = tokenizer.decode(input_id, skip_special_tokens=True)
                 matching_rows = dataset[dataset['content'].apply(lambda x: Levenshtein.ratio(text, x) >= 0.9)]
                 if not matching_rows.empty:
                     github = matching_rows['github'].iloc[0]
                     protocol_id = matching_rows['protocol_id'].iloc[0]
-
-                    misclassified_examples.append({'text': text, 'true_label': label_names[true_label.item()], 'predicted_label':label_names[pred_label.item()], 'github': github, 'protocol_id': protocol_id})
+                    misclassified_examples.append({'text': text, 'true_label': label_names[true_label.item()], 'predicted_label':label_names[pred_label.item()], "predicted_score":np.max( pred_score) , 'github': github, 'protocol_id': protocol_id})
                 else:
                     print(f"no matching row for text: {text}")
 
     misclassified_df = pd.DataFrame(misclassified_examples)
-    misclassified_df.to_csv('data/misclassified_examples.csv', index=False, columns=['text', 'true_label', 'predicted_label', 'github', 'protocol_id'])
+    misclassified_df.to_csv('data/misclassified_examples.csv', index=False, columns=['text', 'true_label', 'predicted_label','predicted_score', 'github', 'protocol_id'])
     
 
     # Print misclassified examples
